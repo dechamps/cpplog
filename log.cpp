@@ -160,14 +160,19 @@ namespace dechamps_cpplog {
 		thread.join();
 	}
 
-	Logger::Logger(LogSink* sink) {
+	Logger::Logger(LogSink* sink, const Options& options) {
 		if (sink == nullptr) return;
 
 		enabledState.emplace(*sink);
+		auto& stream = enabledState->stream;
 
-		FILETIME now = { 0 };
-		GetSystemTimeAsFileTimeFunction()(&now);
-		enabledState->stream << FormatFiletimeISO8601(now) << " " << GetCurrentProcessId() << " " << GetCurrentThreadId() << " ";
+		if (options.prependTime) {
+			FILETIME now = { 0 };
+			GetSystemTimeAsFileTimeFunction()(&now);
+			stream << FormatFiletimeISO8601(now) << " ";
+		}
+		if (options.prependProcessId) stream << GetCurrentProcessId() << " ";
+		if (options.prependThreadId) stream << GetCurrentThreadId() << " ";
 	}
 
 	Logger::~Logger() {

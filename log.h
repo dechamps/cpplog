@@ -81,7 +81,13 @@ namespace dechamps_cpplog {
 	class Logger final
 	{
 	public:
-		explicit Logger(LogSink* sink);
+		struct Options final {
+			bool prependTime = true;
+			bool prependProcessId = true;
+			bool prependThreadId = true;
+		};
+
+		explicit Logger(LogSink* sink, const Options& options = {});
 		~Logger();
 
 		template <typename T> friend Logger&& operator<<(Logger&& lhs, T&& rhs) {
