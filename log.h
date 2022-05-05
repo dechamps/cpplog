@@ -38,14 +38,24 @@ namespace dechamps_cpplog {
 
 	class FileLogSink final : public LogSink {
 	public:
-		FileLogSink(const std::filesystem::path& path);
+		struct Options final {
+			uintmax_t maxSizeBytes = 1 * 1024 * 1024 * 1024;
+			uintmax_t sizeCheckPeriodBytes = std::max<uintmax_t>(maxSizeBytes / 10, 1);
+		};
+
+		FileLogSink(std::filesystem::path path, Options options = {});
 		~FileLogSink();
 
-		void Write(const std::string_view str) override { stream_sink.Write(str); }
+		void Write(const std::string_view str) override;
 
 	private:
+		void CheckSize();
+		
+		const std::filesystem::path path;
+		Options options;
 		std::ofstream stream;
 		StreamLogSink stream_sink{ stream };
+		uintmax_t bytesRemainingUntilSizeCheck = (std::numeric_limits<uintmax_t>::max)();
 	};
 
 	class ThreadSafeLogSink final : public LogSink {

@@ -107,12 +107,38 @@ namespace dechamps_cpplog {
 		Logger(this) << "Host process: " << GetModuleName();
 	}
 
-	FileLogSink::FileLogSink(const std::filesystem::path& path) : stream(path, std::ios::app | std::ios::out) {
-		Logger(this) << "Logfile opened: " << path;
+	FileLogSink::FileLogSink(std::filesystem::path path, Options options) : path(std::move(path)), options(std::move(options)), stream(this->path, std::ios::app | std::ios::out) {
+		Logger(this) << "Logfile opened: " << this->path;
+		CheckSize();
 	}
 
 	FileLogSink::~FileLogSink() {
 		Logger(this) << "Closing logfile";
+	}
+
+	void FileLogSink::Write(const std::string_view str) {
+		if (!stream.is_open()) return;
+
+		stream_sink.Write(str);
+
+		const auto size = str.size();
+		if (size >= bytesRemainingUntilSizeCheck) CheckSize();
+		else bytesRemainingUntilSizeCheck -= size;
+	}
+
+	void FileLogSink::CheckSize() {
+		bytesRemainingUntilSizeCheck = (std::numeric_limits<uintmax_t>::max)();
+
+		const auto sizeBytes = std::filesystem::file_size(path);
+		const auto maxSizeBytes = options.maxSizeBytes;
+		Logger(this) << "Current log file size is " << sizeBytes << " bytes (maximum allowed: " << maxSizeBytes << " bytes)";
+
+		if (sizeBytes < maxSizeBytes) {
+			bytesRemainingUntilSizeCheck = options.sizeCheckPeriodBytes;
+			return;
+		}
+		Logger(this) << "Closing logfile as the maximum size is exceeded";
+		stream.close();
 	}
 
 	void ThreadSafeLogSink::Write(const std::string_view str) {
